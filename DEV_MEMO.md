@@ -1,4 +1,4 @@
-# REM Developer's MEM
+# REM Developer's MEMO
 
 
 21/07/01:

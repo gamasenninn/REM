@@ -1,0 +1,212 @@
+(% extends "layout.html" %)
+(% block content %)
+
+<div class="container-fluid" id="appH">
+ <template v-if="h_display">
+   <h4 align="center" class="mb-3">{{label.title_header}}</h4>
+   <b-row>
+     <b-col cols="auto">
+        <b-pagination
+           v-model="currentPage"
+    	     :total-rows = "rows"
+    	     :per-page="perPage"
+    	     aria-controls="htable"
+    	     align= "left"
+           first-number
+           last-number
+        ></b-pagination>
+      </b-col>
+      <b-col>
+          {{label.add_data}}
+          <button type="button" name="Insert" class="btn btn-primary btn-sm Insert" v-on:click="insert" ><i class="fa fa-plus"></i></button>
+      </b-col>
+    </b-row>
+    <div class="overflow-auto" >
+      <b-table hover caption-top bordered small
+      	  id = "htable"
+      	  sort-by =  "h_id"  sort-desc = true
+      	  head-variant="light"
+      	  :per-page = "perPage"  :current-page = "currentPage"
+          :filter = "filter"
+          label="Table Options"
+          :items= allData
+          :fields= listFields
+          :select-mode = "selectMode"
+          ref="selectabletable"
+          selectable
+          @row-selected="onRowSelected"
+          @row-dblclicked="onDbClicked"
+          >
+          <template v-slot:cell(control)="data">
+              <button type="button" name="edit"
+                  class="btn btn-primary btn-sm edit"
+                  v-on:click="edit(data.index)"
+              >
+                  <i class="fa fa-pencil"></i>
+              </button>
+              <button type="button" name="delete"
+                  class="btn btn-danger btn-sm delete"
+                  v-on:click="deleteData(data.item.h_id)"
+              >
+                  <i class="fa fa-trash-o"></i>
+              </button>
+          </template>
+          <template #table-colgroup="data">
+              <col
+                v-for="field in data.fields"
+                :key = "field.key"
+                :style="{ width: colStyle(field.key)}"
+              >
+          </template>
+          </b-table>
+          <!--  {{selected}} -->
+        </div>
+  </template>
+ <template v-if="h_display">
+ <b-modal id="my-modal"  hide-footer  @hidden="resetModal">
+   <b-table hover caption-top bordered small stacked
+       id = "htable2"
+       head-variant="light"
+       :items= editData
+       :fields= editFields
+       >
+       <template  v-for="field in editFields"
+            v-slot:[`cell(${field.key})`]="data" >
+            <div v-if="field.type!==null">
+              <b-form-input  v-if="field.type=='text'"
+                  type="text" v-model="data.item[field.key]">
+              </b-form-input>
+              <b-form-input  v-if="field.type=='date'"
+                  type="date" v-model="data.item[field.key]">
+              </b-form-input>
+              <b-form-select v-if="field.type=='select'"
+                  v-model="data.item[field.key]"
+                  :options="options[field.selopt]"
+              ></b-form-select>
+              <b-form-textarea v-if="field.type=='textarea'"
+                  v-model="data.item[field.key]"
+              ></b-form-textarea>
+            </div>
+            <div v-else>
+               {{data.item[field.key]}}
+            </div>
+       </template>
+   </b-table>
+   <b-button v-if="updateMode=='update'" block  class="" variant="primary" @click="updateData(editData[0].h_id)" >{{label.update_data}}</b-button>
+   <b-button v-if="updateMode=='insert'" block  class="" variant="primary" @click="insertData">{{label.add_data}}</b-button>
+   <b-button class="mt-3 mb-3" block @click="$bvModal.hide('my-modal')" variant="warning">
+     {{label.cancel}}</b-button>
+ </b-modal>
+ </template>
+</div>
+
+<script src=((config))></script>
+<script>
+ var appH = new Vue({
+  el:'#appH',
+  mixins:[mixinHeader], //Config Data
+  data:{
+       allData : [],
+       editData : [],
+       h_display: true,
+       filter: null,
+       selected:[],
+       selectMode: 'single',  updateMode: '',
+       rq_fetchAll: false,
+  },
+  methods:{
+    colStyle: function(key_val){
+      var target = this.listFields.find(function(v){ return v.key === key_val});
+      return target.width;
+    },
+   edit: async function(idx){
+       await this.$refs.selectabletable.selectRow(idx);
+       this.updateMode = 'update'
+       this.$bvModal.show('my-modal');
+   },
+   insert: function(){
+        this.editData = [{}];
+        for(i in this.editFields){
+          key = this.editFields[i]['key']
+          if(this.editFields[i]['auto_increment']===undefined){
+              this.editData[0][key] = '';
+          }else if (this.editFields[i]['auto_increment']==false) {
+            this.editData[0][key] = '';
+          }
+        }
+        this.updateMode = 'insert';
+        this.$bvModal.show('my-modal');
+   },
+//   selRow: function(idx){
+//       this.$refs.selectabletable.selectRow(idx);
+//   },
+   //-------API CALL ---
+   fetchAllData:async function(){
+        self = this
+        await axios.get(this.apiEndPoint.get, {
+        }).then(function(response){
+          self.allData = response.data;
+        });
+   },
+   insertData: async function(){
+       self = this
+       await axios.post(this.apiEndPoint.post,
+        self.editData[0]
+       ).then(function(response){
+         self.$bvModal.hide('my-modal');
+         self.rq_fetchAll = true;
+       });
+   },
+   deleteData: async function(id){
+       self = this
+       if(confirm(this.label.confirm_delete)){
+           await axios.delete(this.apiEndPoint.delete+'/'+id, {
+           }).then(function(response){
+              self.$bvModal.hide('my-modal');
+           });
+           self.$bvModal.hide('my-modal');
+           self.rq_fetchAll = true;
+       }
+   },
+   updateData: async function(id){
+     self = this;
+     await axios.put(this.apiEndPoint.put+'/'+id,
+       self.selected
+     ).then(function(response){
+       self.$bvModal.hide('my-modal');
+       self.rq_fetchAll=true;
+     });
+   },
+   onRowSelected(items){
+     this.selected =  items[0];
+     this.editData = items;
+   },
+   onDbClicked(item){
+     this.selected =  item;
+     this.editData[0] = item;
+     this.updateMode = 'update'
+     this.$bvModal.show('my-modal');
+   },
+   resetModal: function(){
+     this.rq_fetchAll = true;
+   },
+  },
+  watch:{
+      rq_fetchAll: function(new_val,old_val){
+        if(new_val==true){
+          this.rq_fetchAll = false;
+          this.fetchAllData();
+        }
+      }
+  },
+  created:function(){
+    this.fetchAllData();
+  },
+  computed:{
+    rows(){
+      return this.allData.length
+    },
+  },
+ });
+</script>
+(% endblock %)
