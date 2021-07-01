@@ -36,11 +36,11 @@ var mixinHeader={
                        { value: '個人', text:'個人'},
                  ],
              person: [
-                       { value: '篠崎', text:'篠崎'},
-                       { value: '大岡', text:'大岡'},
-                       { value: '中', text:'中'},
-                       { value: '稲葉', text:'稲葉'},
-                       { value: '人見', text:'人見'},
+                       { value: '田中', text:'田中'},
+                       { value: '佐藤', text:'佐藤'},
+                       { value: '鈴木', text:'鈴木'},
+                       { value: '小野', text:'小野'},
+                       { value: '山田', text:'山田'},
                  ],
        },
        label:{
